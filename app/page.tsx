@@ -1,18 +1,11 @@
 import { ContactForm } from '@/components/contact-form';
+import { SiteHeader } from '@/components/site-header';
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-[#f5f5f5] flex flex-col" style={{fontFamily: 'Arial, Helvetica, sans-serif'}}>
       {/* Header */}
-      <header className="bg-white border-b border-[#e0e0e0]" style={{height: '50px'}}>
-        <div className="w-full max-w-[1200px] mx-auto px-[15px] h-full flex items-center justify-start">
-          <img 
-            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/csm_wikus-logo_en_a9f9a4a369-1-JupSPZCqqgbkFh9HtCS4Dz4f1ePjCs.png" 
-            alt="WIKUS Saw Technology" 
-            style={{height: '38px', width: 'auto'}}
-          />
-        </div>
-      </header>
+      <SiteHeader />
 
       {/* Hero Image Section */}
       <section className="w-full" style={{height: '280px', backgroundImage: 'url(https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Marathon-M42_Emulsion-d4AtnJ0GJ4kkPXyYAIS4TP0H2Ecjlq.jpg)', backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative'}}>
