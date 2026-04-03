@@ -28,7 +28,7 @@ export function SiteHeader() {
   return (
     <header className="w-full">
       {/* Utility Bar */}
-      <div className="bg-[#1a1a1a] text-white">
+      <div className="bg-[#003366] text-white">
         <div className="w-full max-w-[1200px] mx-auto px-4">
           <nav
             className="hidden md:flex items-center justify-end gap-6 h-8"
