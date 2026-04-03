@@ -7,9 +7,8 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.app',
+  title: 'High-Performance Bandsaw Blades | WIKUS',
+  description: 'Find the right bandsaw blade for your application. Talk to a WIKUS specialist to improve performance, reduce downtime, and extend blade life.',
   icons: {
     icon: [
       {
