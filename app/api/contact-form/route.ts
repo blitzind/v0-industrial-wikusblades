@@ -155,8 +155,8 @@ export async function POST(request: NextRequest) {
 
     console.log('[v0] STEP 1: Contact created successfully. API Response:', JSON.stringify(responseData, null, 2));
 
-    // Extract contact ID from response
-    const contactId = responseData?.id || responseData?.contact_id;
+    // Extract contact ID from response - API returns it in data.id
+    const contactId = responseData?.data?.id;
     console.log('[v0] Created Contact ID:', contactId);
 
     // STEP 2: Fetch custom fields to find the correct field ID
