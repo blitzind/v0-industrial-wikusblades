@@ -35,13 +35,13 @@ interface ContactCorePayload {
   [key: string]: string;
 }
 
-function mapFormDataToContactCore(data: ContactFormData, workspaceId: string): ContactCorePayload {
+function mapFormDataToContactCore(data: ContactFormData): ContactCorePayload {
   // Build full name from firstName and lastName, trimming extra spaces
   const name = `${data.firstName} ${data.lastName}`.trim();
   
-  // Return native contact fields WITH workspaceId
+  // Return ONLY native contact fields - NO workspaceId in body
+  // Workspace scoping is handled via x-api-key header authentication
   return {
-    workspaceId: workspaceId,
     name: name, // REQUIRED: NOT NULL constraint
     first_name: data.firstName,
     last_name: data.lastName,
@@ -102,8 +102,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Map form data to core contact payload (native fields only)
-    const coreContactPayload = mapFormDataToContactCore(formData, workspaceId);
+    // Workspace context is provided via x-api-key header authentication
+    const coreContactPayload = mapFormDataToContactCore(formData);
     console.log('[v0] CORE CONTACT PAYLOAD (step 1):', JSON.stringify(coreContactPayload, null, 2));
+    console.log('[v0] WORKSPACE SCOPING: Via x-api-key header authentication (workspaceId NOT in body)');
 
     // Workspace API endpoint
     const endpoint = 'https://api.workspaceconnector.com/v1/contacts';
@@ -238,7 +240,6 @@ export async function POST(request: NextRequest) {
             // FALLBACK FORMAT 1: customFields with id/value
             console.log('[v0] STEP 3: FALLBACK #1 - Trying customFields with id/value...');
             const payload1 = {
-              workspaceId: workspaceId,
               customFields: [
                 {
                   id: formSubmissionDetailsFieldId,
@@ -269,7 +270,6 @@ export async function POST(request: NextRequest) {
               // FALLBACK FORMAT 2: customFields with key/value
               console.log('[v0] STEP 3: FALLBACK #1 failed, trying FALLBACK #2 - customFields with key/value...');
               const payload2 = {
-                workspaceId: workspaceId,
                 customFields: [
                   {
                     key: 'form_submission_details',
@@ -300,7 +300,6 @@ export async function POST(request: NextRequest) {
                 // FALLBACK FORMAT 3: notes field
                 console.log('[v0] STEP 3: FALLBACK #2 failed, trying FALLBACK #3 - notes field...');
                 const payload3 = {
-                  workspaceId: workspaceId,
                   notes: formSubmissionDetails,
                 };
                 console.log('[v0] STEP 3: FALLBACK #3 - Payload:', JSON.stringify(payload3, null, 2));
@@ -326,7 +325,6 @@ export async function POST(request: NextRequest) {
                   // FALLBACK FORMAT 4: description field
                   console.log('[v0] STEP 3: FALLBACK #3 failed, trying FALLBACK #4 - description field...');
                   const payload4 = {
-                    workspaceId: workspaceId,
                     description: formSubmissionDetails,
                   };
                   console.log('[v0] STEP 3: FALLBACK #4 - Payload:', JSON.stringify(payload4, null, 2));
