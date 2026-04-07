@@ -39,7 +39,8 @@ function mapFormDataToContactCore(data: ContactFormData): ContactCorePayload {
   // Build full name from firstName and lastName, trimming extra spaces
   const name = `${data.firstName} ${data.lastName}`.trim();
   
-  // Return ONLY native contact fields
+  // Return ONLY native contact fields - NO workspaceId in body
+  // Workspace scoping is handled via x-api-key header authentication
   return {
     name: name, // REQUIRED: NOT NULL constraint
     first_name: data.firstName,
@@ -50,37 +51,27 @@ function mapFormDataToContactCore(data: ContactFormData): ContactCorePayload {
   };
 }
 
-function buildCustomFieldsPayload(fieldId: string, data: ContactFormData): { customFields: Array<{ id: string; value: string }> } {
-  // Build form submission details value
-  const formSubmissionDetails = [
-    `Industry: ${data.industry || 'N/A'}`,
-    `Materials: ${data.applicationDescription || 'N/A'}`,
-    `Challenges: ${data.currentChallenges || 'N/A'}`,
-    `Contact Consent: ${data.agreeToContact ? 'Yes' : 'No'}`,
-    `Privacy Agreement: ${data.agreeToPrivacy ? 'Yes' : 'No'}`,
-  ].join('\n');
-  
-  // Use the actual field ID from the API
-  return {
-    customFields: [
-      {
-        id: fieldId, // Use the real field ID from custom fields API
-        value: formSubmissionDetails,
-      },
-    ],
-  };
-}
-
 export async function POST(request: NextRequest) {
   try {
-    // Validate API key is set
+    // Validate API key and workspace ID are set
     const apiKey = process.env.API_KEY_FUZOR_FORM;
+    const workspaceId = process.env.FUZOR_WORKSPACE_ID;
+    
     console.log('[v0] API_KEY_FUZOR_FORM exists:', !!apiKey);
+    console.log('[v0] FUZOR_WORKSPACE_ID exists:', !!workspaceId);
     
     if (!apiKey) {
       console.error('[v0] CRITICAL: API_KEY_FUZOR_FORM environment variable is missing');
       return NextResponse.json(
         { error: 'Workspace API key is missing - contact administrator' },
+        { status: 500 }
+      );
+    }
+
+    if (!workspaceId) {
+      console.error('[v0] CRITICAL: FUZOR_WORKSPACE_ID environment variable is missing');
+      return NextResponse.json(
+        { error: 'Workspace ID is missing - contact administrator' },
         { status: 500 }
       );
     }
@@ -111,8 +102,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Map form data to core contact payload (native fields only)
+    // Workspace context is provided via x-api-key header authentication
     const coreContactPayload = mapFormDataToContactCore(formData);
     console.log('[v0] CORE CONTACT PAYLOAD (step 1):', JSON.stringify(coreContactPayload, null, 2));
+    console.log('[v0] WORKSPACE SCOPING: Via x-api-key header authentication (workspaceId NOT in body)');
 
     // Workspace API endpoint
     const endpoint = 'https://api.workspaceconnector.com/v1/contacts';
@@ -162,120 +155,65 @@ export async function POST(request: NextRequest) {
 
     console.log('[v0] STEP 1: Contact created successfully. API Response:', JSON.stringify(responseData, null, 2));
 
-    // Extract contact ID from response
-    const contactId = responseData?.id || responseData?.contact_id;
+    // Extract contact ID from response - API returns it in data.id
+    const contactId = responseData?.data?.id;
     console.log('[v0] Created Contact ID:', contactId);
 
-    // STEP 2: Fetch custom fields to find the correct field ID
-    if (contactId) {
-      try {
-        console.log('[v0] STEP 2: Fetching custom fields definitions...');
-        
-        const customFieldsListEndpoint = 'https://api.workspaceconnector.com/v1/custom-fields';
-        console.log('[v0] STEP 2: Custom Fields List Endpoint:', customFieldsListEndpoint);
-
-        const customFieldsListResponse = await fetch(customFieldsListEndpoint, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-          },
-        });
-
-        console.log('[v0] STEP 2: Custom Fields List Response Status:', customFieldsListResponse.status);
-        console.log('[v0] STEP 2: Custom Fields List Response Status Text:', customFieldsListResponse.statusText);
-
-        const customFieldsListText = await customFieldsListResponse.text();
-        console.log('[v0] STEP 2: Custom Fields List Response Body:', customFieldsListText);
-
-        let customFieldsList;
+        // STEP 2: Update contact notes with form submission details
+        // Verified working format: PATCH with notes field
         try {
-          customFieldsList = JSON.parse(customFieldsListText);
-        } catch {
-          customFieldsList = { raw: customFieldsListText };
-        }
+          console.log('[v0] STEP 2: Updating contact with form submission details via notes field...');
+          
+          const formSubmissionDetails = [
+            `Industry: ${formData.industry || 'N/A'}`,
+            `Materials: ${formData.applicationDescription || 'N/A'}`,
+            `Challenges: ${formData.currentChallenges || 'N/A'}`,
+            `Contact Consent: ${formData.agreeToContact ? 'Yes' : 'No'}`,
+            `Privacy Agreement: ${formData.agreeToPrivacy ? 'Yes' : 'No'}`,
+            `Source: Home Page`,
+          ].join('\n');
 
-        // Find the "Form Submission Details" field
-        let formSubmissionDetailsFieldId: string | null = null;
-        
-        if (Array.isArray(customFieldsList)) {
-          const field = customFieldsList.find((f: any) => 
-            f.name?.toLowerCase() === 'form submission details' ||
-            f.label?.toLowerCase() === 'form submission details'
-          );
-          if (field) {
-            formSubmissionDetailsFieldId = field.id;
-            console.log('[v0] STEP 2: Found "Form Submission Details" field');
-            console.log('[v0] STEP 2: Matched field name:', field.name || field.label);
-            console.log('[v0] STEP 2: Matched field id:', formSubmissionDetailsFieldId);
-          }
-        } else if (customFieldsList?.data && Array.isArray(customFieldsList.data)) {
-          const field = customFieldsList.data.find((f: any) => 
-            f.name?.toLowerCase() === 'form submission details' ||
-            f.label?.toLowerCase() === 'form submission details'
-          );
-          if (field) {
-            formSubmissionDetailsFieldId = field.id;
-            console.log('[v0] STEP 2: Found "Form Submission Details" field');
-            console.log('[v0] STEP 2: Matched field name:', field.name || field.label);
-            console.log('[v0] STEP 2: Matched field id:', formSubmissionDetailsFieldId);
-          }
-        }
+          const updateEndpoint = `https://api.workspaceconnector.com/v1/contacts/${contactId}`;
+          const updatePayload = {
+            notes: formSubmissionDetails,
+          };
 
-        if (!formSubmissionDetailsFieldId) {
-          console.warn('[v0] STEP 2: "Form Submission Details" field not found in custom fields list');
-          console.log('[v0] STEP 2: All available custom fields:', JSON.stringify(customFieldsList, null, 2));
-        }
+          console.log('[v0] STEP 2: Update Endpoint:', updateEndpoint);
+          console.log('[v0] STEP 2: Update Payload:', JSON.stringify(updatePayload, null, 2));
 
-        // STEP 3: Update contact with custom fields if field ID was found
-        if (formSubmissionDetailsFieldId) {
-          try {
-            const customFieldsData = buildCustomFieldsPayload(formSubmissionDetailsFieldId, formData);
-            console.log('[v0] STEP 3: Custom Fields Update Payload:', JSON.stringify(customFieldsData, null, 2));
+          const updateResponse = await fetch(updateEndpoint, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': apiKey,
+            },
+            body: JSON.stringify(updatePayload),
+          });
 
-            const customFieldsEndpoint = `https://api.workspaceconnector.com/v1/contacts/${contactId}`;
-            console.log('[v0] STEP 3: Custom Fields Update Endpoint:', customFieldsEndpoint);
+          const updateResponseText = await updateResponse.text();
+          console.log('[v0] STEP 2: Update Response Status:', updateResponse.status);
+          console.log('[v0] STEP 2: Update Response Body:', updateResponseText);
 
-            const customFieldsResponse = await fetch(customFieldsEndpoint, {
-              method: 'PATCH',
-              headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': apiKey,
-              },
-              body: JSON.stringify(customFieldsData),
-            });
-
-            console.log('[v0] STEP 3: Custom Fields Update Response Status:', customFieldsResponse.status);
-            console.log('[v0] STEP 3: Custom Fields Update Response Status Text:', customFieldsResponse.statusText);
-
-            const customFieldsResponseText = await customFieldsResponse.text();
-            console.log('[v0] STEP 3: Custom Fields Update Response Body:', customFieldsResponseText);
-
-            if (!customFieldsResponse.ok) {
-              console.warn('[v0] STEP 3: Custom fields update failed (non-critical):', {
-                status: customFieldsResponse.status,
-                statusText: customFieldsResponse.statusText,
-                body: customFieldsResponseText,
-              });
-            } else {
-              console.log('[v0] STEP 3: Custom fields updated successfully for contact', contactId);
-            }
-          } catch (customFieldsError) {
-            console.error('[v0] STEP 3: Custom fields update error (non-critical):', {
-              error: customFieldsError instanceof Error ? customFieldsError.message : 'Unknown error',
+          if (updateResponse.ok) {
+            console.log('[v0] STEP 2: SUCCESS - Form submission details saved to contact notes');
+            console.log('[v0] STEP 2: Saved fields:');
+            console.log('[v0]   - Industry: ' + (formData.industry || 'N/A'));
+            console.log('[v0]   - Materials: ' + (formData.applicationDescription || 'N/A'));
+            console.log('[v0]   - Challenges: ' + (formData.currentChallenges || 'N/A'));
+            console.log('[v0]   - Contact Consent: ' + (formData.agreeToContact ? 'Yes' : 'No'));
+            console.log('[v0]   - Privacy Agreement: ' + (formData.agreeToPrivacy ? 'Yes' : 'No'));
+            console.log('[v0]   - Source: Home Page ✓');
+          } else {
+            console.warn('[v0] STEP 2: Failed to update contact notes (non-critical):', {
+              status: updateResponse.status,
+              body: updateResponseText,
             });
           }
-        } else {
-          console.warn('[v0] STEP 3: Skipping custom fields update - field ID not resolved');
+        } catch (updateError) {
+          console.error('[v0] STEP 2: Error updating contact notes (non-critical):', {
+            error: updateError instanceof Error ? updateError.message : 'Unknown error',
+          });
         }
-      } catch (customFieldsListError) {
-        console.error('[v0] STEP 2: Custom fields list fetch error (non-critical):', {
-          error: customFieldsListError instanceof Error ? customFieldsListError.message : 'Unknown error',
-        });
-      }
-    } else {
-      console.warn('[v0] No contact ID returned - skipping custom fields operations');
-    }
 
     console.log('[v0] Form submission completed successfully');
 
