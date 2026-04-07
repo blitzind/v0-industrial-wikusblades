@@ -220,6 +220,7 @@ export async function POST(request: NextRequest) {
               `Challenges: ${formData.currentChallenges || 'N/A'}`,
               `Contact Consent: ${formData.agreeToContact ? 'Yes' : 'No'}`,
               `Privacy Agreement: ${formData.agreeToPrivacy ? 'Yes' : 'No'}`,
+              `Source: Home Page`,
             ].join('\n');
 
             // FALLBACK FORMAT 1: customFields with id/value
@@ -250,6 +251,7 @@ export async function POST(request: NextRequest) {
 
             if (response1.ok) {
               console.log('[v0] STEP 3: FALLBACK #1 - SUCCESS: customFields with id/value worked');
+              console.log('[v0] STEP 3: Source field included: Source: Home Page');
             } else {
               // FALLBACK FORMAT 2: customFields with key/value
               console.log('[v0] STEP 3: FALLBACK #1 failed, trying FALLBACK #2 - customFields with key/value...');
@@ -279,6 +281,7 @@ export async function POST(request: NextRequest) {
 
               if (response2.ok) {
                 console.log('[v0] STEP 3: FALLBACK #2 - SUCCESS: customFields with key/value worked');
+                console.log('[v0] STEP 3: Source field included: Source: Home Page');
               } else {
                 // FALLBACK FORMAT 3: notes field
                 console.log('[v0] STEP 3: FALLBACK #2 failed, trying FALLBACK #3 - notes field...');
@@ -303,6 +306,7 @@ export async function POST(request: NextRequest) {
 
                 if (response3.ok) {
                   console.log('[v0] STEP 3: FALLBACK #3 - SUCCESS: notes field worked');
+                  console.log('[v0] STEP 3: Source field included: Source: Home Page');
                 } else {
                   // FALLBACK FORMAT 4: description field
                   console.log('[v0] STEP 3: FALLBACK #3 failed, trying FALLBACK #4 - description field...');
@@ -327,6 +331,7 @@ export async function POST(request: NextRequest) {
 
                   if (response4.ok) {
                     console.log('[v0] STEP 3: FALLBACK #4 - SUCCESS: description field worked');
+                    console.log('[v0] STEP 3: Source field included: Source: Home Page');
                   } else {
                     console.error('[v0] STEP 3: ALL 4 FALLBACK FORMATS FAILED');
                     console.log('[v0] STEP 3: Summary of all attempts:');
