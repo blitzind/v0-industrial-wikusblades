@@ -35,12 +35,13 @@ interface ContactCorePayload {
   [key: string]: string;
 }
 
-function mapFormDataToContactCore(data: ContactFormData): ContactCorePayload {
+function mapFormDataToContactCore(data: ContactFormData, workspaceId: string): ContactCorePayload {
   // Build full name from firstName and lastName, trimming extra spaces
   const name = `${data.firstName} ${data.lastName}`.trim();
   
-  // Return ONLY native contact fields
+  // Return native contact fields WITH workspaceId
   return {
+    workspaceId: workspaceId,
     name: name, // REQUIRED: NOT NULL constraint
     first_name: data.firstName,
     last_name: data.lastName,
@@ -52,14 +53,25 @@ function mapFormDataToContactCore(data: ContactFormData): ContactCorePayload {
 
 export async function POST(request: NextRequest) {
   try {
-    // Validate API key is set
+    // Validate API key and workspace ID are set
     const apiKey = process.env.API_KEY_FUZOR_FORM;
+    const workspaceId = process.env.FUZOR_WORKSPACE_ID;
+    
     console.log('[v0] API_KEY_FUZOR_FORM exists:', !!apiKey);
+    console.log('[v0] FUZOR_WORKSPACE_ID exists:', !!workspaceId);
     
     if (!apiKey) {
       console.error('[v0] CRITICAL: API_KEY_FUZOR_FORM environment variable is missing');
       return NextResponse.json(
         { error: 'Workspace API key is missing - contact administrator' },
+        { status: 500 }
+      );
+    }
+
+    if (!workspaceId) {
+      console.error('[v0] CRITICAL: FUZOR_WORKSPACE_ID environment variable is missing');
+      return NextResponse.json(
+        { error: 'Workspace ID is missing - contact administrator' },
         { status: 500 }
       );
     }
@@ -90,7 +102,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Map form data to core contact payload (native fields only)
-    const coreContactPayload = mapFormDataToContactCore(formData);
+    const coreContactPayload = mapFormDataToContactCore(formData, workspaceId);
     console.log('[v0] CORE CONTACT PAYLOAD (step 1):', JSON.stringify(coreContactPayload, null, 2));
 
     // Workspace API endpoint
@@ -226,6 +238,7 @@ export async function POST(request: NextRequest) {
             // FALLBACK FORMAT 1: customFields with id/value
             console.log('[v0] STEP 3: FALLBACK #1 - Trying customFields with id/value...');
             const payload1 = {
+              workspaceId: workspaceId,
               customFields: [
                 {
                   id: formSubmissionDetailsFieldId,
@@ -256,6 +269,7 @@ export async function POST(request: NextRequest) {
               // FALLBACK FORMAT 2: customFields with key/value
               console.log('[v0] STEP 3: FALLBACK #1 failed, trying FALLBACK #2 - customFields with key/value...');
               const payload2 = {
+                workspaceId: workspaceId,
                 customFields: [
                   {
                     key: 'form_submission_details',
@@ -286,6 +300,7 @@ export async function POST(request: NextRequest) {
                 // FALLBACK FORMAT 3: notes field
                 console.log('[v0] STEP 3: FALLBACK #2 failed, trying FALLBACK #3 - notes field...');
                 const payload3 = {
+                  workspaceId: workspaceId,
                   notes: formSubmissionDetails,
                 };
                 console.log('[v0] STEP 3: FALLBACK #3 - Payload:', JSON.stringify(payload3, null, 2));
@@ -311,6 +326,7 @@ export async function POST(request: NextRequest) {
                   // FALLBACK FORMAT 4: description field
                   console.log('[v0] STEP 3: FALLBACK #3 failed, trying FALLBACK #4 - description field...');
                   const payload4 = {
+                    workspaceId: workspaceId,
                     description: formSubmissionDetails,
                   };
                   console.log('[v0] STEP 3: FALLBACK #4 - Payload:', JSON.stringify(payload4, null, 2));
