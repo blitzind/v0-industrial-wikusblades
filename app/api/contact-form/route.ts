@@ -53,25 +53,14 @@ function mapFormDataToContactCore(data: ContactFormData): ContactCorePayload {
 
 export async function POST(request: NextRequest) {
   try {
-    // Validate API key and workspace ID are set
+    // Validate API key is set
+    // Note: Workspace scoping is handled entirely via the x-api-key header - no workspaceId needed in request body
     const apiKey = process.env.API_KEY_FUZOR_FORM;
-    const workspaceId = process.env.FUZOR_WORKSPACE_ID;
-    
-    console.log('[v0] API_KEY_FUZOR_FORM exists:', !!apiKey);
-    console.log('[v0] FUZOR_WORKSPACE_ID exists:', !!workspaceId);
     
     if (!apiKey) {
       console.error('[v0] CRITICAL: API_KEY_FUZOR_FORM environment variable is missing');
       return NextResponse.json(
         { error: 'Workspace API key is missing - contact administrator' },
-        { status: 500 }
-      );
-    }
-
-    if (!workspaceId) {
-      console.error('[v0] CRITICAL: FUZOR_WORKSPACE_ID environment variable is missing');
-      return NextResponse.json(
-        { error: 'Workspace ID is missing - contact administrator' },
         { status: 500 }
       );
     }
@@ -105,7 +94,7 @@ export async function POST(request: NextRequest) {
     // Workspace context is provided via x-api-key header authentication
     const coreContactPayload = mapFormDataToContactCore(formData);
     console.log('[v0] CORE CONTACT PAYLOAD (step 1):', JSON.stringify(coreContactPayload, null, 2));
-    console.log('[v0] WORKSPACE SCOPING: Via x-api-key header authentication (workspaceId NOT in body)');
+
 
     // Workspace API endpoint
     const endpoint = 'https://api.workspaceconnector.com/v1/contacts';
