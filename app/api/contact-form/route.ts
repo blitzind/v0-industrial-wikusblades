@@ -13,7 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * - email
  * - phone
  * - company
- * - state (maps to address1_stateorprovince or state)
+ * - address.state (nested address object - top-level "state" rejected by API)
  * - lead_source (static: "wikusblades.com")
  * 
  * STEP 2: Update Contact Notes with full submission summary
@@ -37,25 +37,41 @@ interface ContactFormData {
 }
 
 interface ContactCorePayload {
-  [key: string]: string;
+  name: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  company: string;
+  lead_source: string;
+  address?: {
+    state: string;
+  };
 }
 
 function mapFormDataToContactCore(data: ContactFormData): ContactCorePayload {
   // Build full name from firstName and lastName, trimming extra spaces
   const name = `${data.firstName} ${data.lastName}`.trim();
-  
-  // Return ONLY native contact fields - NO workspaceId in body
-  // Workspace scoping is handled via x-api-key header authentication
-  return {
+
+  // Return ONLY known-valid native contact fields.
+  // "state" is not a top-level contacts column - it is nested under address.
+  // Workspace scoping is handled via x-api-key header authentication.
+  const payload: ContactCorePayload = {
     name: name, // REQUIRED: NOT NULL constraint
     first_name: data.firstName,
     last_name: data.lastName,
     email: data.email,
     phone: data.phone,
     company: data.company,
-    state: data.state,
     lead_source: LEAD_SOURCE,
   };
+
+  // Include state inside address object if provided
+  if (data.state) {
+    payload.address = { state: data.state };
+  }
+
+  return payload;
 }
 
 export async function POST(request: NextRequest) {
@@ -196,7 +212,7 @@ export async function POST(request: NextRequest) {
           if (updateResponse.ok) {
             console.log('[v0] STEP 2: SUCCESS - Form submission details saved to contact notes');
             console.log('[v0] STEP 2: Saved fields:');
-            console.log('[v0]   - State: ' + (formData.state || 'N/A') + ' (state field + notes)');
+            console.log('[v0]   - State: ' + (formData.state || 'N/A') + ' (address.state + notes fallback)');
             console.log('[v0]   - Industry: ' + (formData.industry || 'N/A'));
             console.log('[v0]   - Materials: ' + (formData.applicationDescription || 'N/A'));
             console.log('[v0]   - Challenges: ' + (formData.currentChallenges || 'N/A'));
