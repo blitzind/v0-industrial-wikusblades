@@ -13,10 +13,13 @@ import { NextRequest, NextResponse } from 'next/server';
  * - email
  * - phone
  * - company
+ * - lead_source (static: "wikusblades.com")
  * 
- * STEP 2: Update Contact with Custom Fields
- * - form_submission_details (custom field): Industry, materials, challenges, consent
+ * STEP 2: Update Contact Notes with full submission summary
+ * - Industry, materials, challenges, consent, lead source (fallback)
  */
+
+const LEAD_SOURCE = 'wikusblades.com';
 
 interface ContactFormData {
   firstName: string;
@@ -48,6 +51,7 @@ function mapFormDataToContactCore(data: ContactFormData): ContactCorePayload {
     email: data.email,
     phone: data.phone,
     company: data.company,
+    lead_source: LEAD_SOURCE,
   };
 }
 
@@ -93,6 +97,7 @@ export async function POST(request: NextRequest) {
     // Map form data to core contact payload (native fields only)
     // Workspace context is provided via x-api-key header authentication
     const coreContactPayload = mapFormDataToContactCore(formData);
+    console.log('[v0] Lead Source mapped:', LEAD_SOURCE);
     console.log('[v0] CORE CONTACT PAYLOAD (step 1):', JSON.stringify(coreContactPayload, null, 2));
 
 
@@ -159,7 +164,7 @@ export async function POST(request: NextRequest) {
             `Challenges: ${formData.currentChallenges || 'N/A'}`,
             `Contact Consent: ${formData.agreeToContact ? 'Yes' : 'No'}`,
             `Privacy Agreement: ${formData.agreeToPrivacy ? 'Yes' : 'No'}`,
-            `Source: Home Page`,
+            `Lead Source: ${LEAD_SOURCE}`,
           ].join('\n');
 
           const updateEndpoint = `https://api.workspaceconnector.com/v1/contacts/${contactId}`;
@@ -191,7 +196,7 @@ export async function POST(request: NextRequest) {
             console.log('[v0]   - Challenges: ' + (formData.currentChallenges || 'N/A'));
             console.log('[v0]   - Contact Consent: ' + (formData.agreeToContact ? 'Yes' : 'No'));
             console.log('[v0]   - Privacy Agreement: ' + (formData.agreeToPrivacy ? 'Yes' : 'No'));
-            console.log('[v0]   - Source: Home Page ✓');
+            console.log('[v0]   - Lead Source: ' + LEAD_SOURCE + ' (notes + lead_source field)');
           } else {
             console.warn('[v0] STEP 2: Failed to update contact notes (non-critical):', {
               status: updateResponse.status,
