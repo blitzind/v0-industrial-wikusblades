@@ -8,6 +8,7 @@ interface FormState {
   email: string;
   phone: string;
   company: string;
+  state: string;
   industry: string;
   applicationDescription: string;
   currentChallenges: string;
@@ -27,6 +28,7 @@ export function ContactForm() {
     email: '',
     phone: '',
     company: '',
+    state: '',
     industry: '',
     applicationDescription: '',
     currentChallenges: '',
@@ -46,6 +48,7 @@ export function ContactForm() {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = true;
     if (!formData.phone.trim()) newErrors.phone = true;
     if (!formData.company.trim()) newErrors.company = true;
+    if (!formData.state) newErrors.state = true;
     if (!formData.industry) newErrors.industry = true;
     if (!formData.agreeToPrivacy) newErrors.agreeToPrivacy = true;
 
@@ -103,6 +106,7 @@ export function ContactForm() {
         email: '',
         phone: '',
         company: '',
+        state: '',
         industry: '',
         applicationDescription: '',
         currentChallenges: '',
