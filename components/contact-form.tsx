@@ -189,6 +189,7 @@ export function ContactForm() {
           name="firstName"
           value={formData.firstName}
           onChange={handleInputChange}
+          required
           style={{
             width: '100%',
             padding: '8px 12px',
@@ -221,6 +222,7 @@ export function ContactForm() {
           name="lastName"
           value={formData.lastName}
           onChange={handleInputChange}
+          required
           style={{
             width: '100%',
             padding: '8px 12px',
@@ -253,6 +255,7 @@ export function ContactForm() {
           name="email"
           value={formData.email}
           onChange={handleInputChange}
+          required
           style={{
             width: '100%',
             padding: '8px 12px',
@@ -285,6 +288,7 @@ export function ContactForm() {
           name="phone"
           value={formData.phone}
           onChange={handleInputChange}
+          required
           style={{
             width: '100%',
             padding: '8px 12px',
@@ -317,6 +321,7 @@ export function ContactForm() {
           name="company"
           value={formData.company}
           onChange={handleInputChange}
+          required
           style={{
             width: '100%',
             padding: '8px 12px',
@@ -348,6 +353,7 @@ export function ContactForm() {
           name="state"
           value={formData.state}
           onChange={handleInputChange}
+          required
           style={{
             width: '100%',
             padding: '8px 12px',
@@ -431,6 +437,7 @@ export function ContactForm() {
           name="industry"
           value={formData.industry}
           onChange={handleInputChange}
+          required
           style={{
             width: '100%',
             padding: '8px 12px',
@@ -553,6 +560,7 @@ export function ContactForm() {
           name="agreeToPrivacy"
           checked={formData.agreeToPrivacy}
           onChange={handleInputChange}
+          required
           style={{
             marginTop: '2px',
             cursor: 'pointer',
